@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:enmaskedt/app/app_module.dart';
-import 'package:flutter_modular/flutter_modular.dart';
+import './app/pages/app_widget.dart';
+import 'package:camera/camera.dart';
 
-void main() => runApp(ModularApp(module: AppModule()));
+List<CameraDescription> cameras;
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  cameras = await availableCameras();
+  runApp(AppWidget());
+}
