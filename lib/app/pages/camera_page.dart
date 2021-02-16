@@ -21,8 +21,6 @@ class _CameraPageState extends State<CameraPage> {
   bool isWorking = false;
 
   int currentState = 0;
-  Timer _timer;
-  int _start = 3;
 
   initCamera() {
     cameraController = CameraController(cameras[0], ResolutionPreset.medium);
@@ -33,31 +31,13 @@ class _CameraPageState extends State<CameraPage> {
       }
 
       setState(() {
-        cameraController.startImageStream((imageFromStream) async => {
-              imgCamera = imageFromStream,
-              if (await runModelOnFrame())
+        cameraController.startImageStream((imageFromStream) => {
+              if (!isWorking)
                 {
-                  if (!_timer.isActive)
-                    {
-                      currentState = 2,
-                      Timer.periodic(
-                        Duration(seconds: 1),
-                        (Timer timer) {
-                          if (_start == 0) {
-                            timer.cancel();
-                            currentState = 3;
-                          } else {
-                            _start--;
-                          }
-                        },
-                      )
-                    }
-                }
-              else
-                {
-                  currentState = 0,
-                  _timer.cancel(),
-                }
+                  isWorking = true,
+                  imgCamera = imageFromStream,
+                  runModelOnFrame()
+                },
             });
       });
     });
@@ -68,7 +48,7 @@ class _CameraPageState extends State<CameraPage> {
         model: "assets/model.tflite", labels: "assets/labels.txt");
   }
 
-  Future<bool> runModelOnFrame() async {
+  runModelOnFrame() async {
     if (imgCamera != null) {
       var recognitions = await Tflite.runModelOnFrame(
           bytesList: imgCamera.planes.map((plane) {
@@ -89,10 +69,26 @@ class _CameraPageState extends State<CameraPage> {
         result = response["label"];
       });
 
-      return result == "with_mask";
-    }
+      if (result == "with_mask") {
+        print("WITH MASK");
 
-    return false;
+        setState(() {
+          currentState = 1;
+        });
+
+        await Future.delayed(Duration(seconds: 3));
+
+        setState(() {
+          currentState = 2;
+        });
+      } else {
+        setState(() {
+          currentState = 0;
+        });
+      }
+
+      isWorking = false;
+    }
   }
 
   CameraStatus statusNamed(int state) {
@@ -107,7 +103,7 @@ class _CameraPageState extends State<CameraPage> {
             status: "Verificando...",
             color: Colors.yellow,
             icon: Icons.warning);
-      case 3:
+      case 2:
         return CameraStatus(
             status: "Prossiga",
             color: Colors.green,
@@ -129,14 +125,13 @@ class _CameraPageState extends State<CameraPage> {
 
   @override
   void dispose() {
-    _timer.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
-    final CameraStatus status = statusNamed(currentState);
+    CameraStatus status = statusNamed(currentState);
 
     return Scaffold(
         body: Container(
@@ -148,29 +143,39 @@ class _CameraPageState extends State<CameraPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset('assets/images/mask.png'),
+              Image.asset(
+                'assets/images/mask.png',
+                width: size.width * 0.2,
+                height: size.height * 0.1,
+              ),
               Expanded(
-                child: Text("Verificador de máscara",
-                    style: GoogleFonts.raleway(
-                        textStyle: TextStyle(letterSpacing: 5, fontSize: 15))),
+                child: Text(
+                  "Verificador de máscara",
+                  style: GoogleFonts.raleway(
+                      textStyle: TextStyle(
+                          letterSpacing: 5, fontSize: size.height * 0.05)),
+                  textAlign: TextAlign.center,
+                ),
               ),
             ],
           ),
           Container(
               width: double.infinity,
-              height: size.height * 0.7,
               decoration:
                   BoxDecoration(border: Border.all(color: status.color)),
               child: cameraController.value.isInitialized
                   ? Stack(
+                      alignment: Alignment.center,
                       children: [
                         AspectRatio(
                           aspectRatio: cameraController.value.aspectRatio,
-                          child: CameraPreview(cameraController),
+                          child: Opacity(
+                              opacity: currentState == 1 ? 0.5 : 1.0,
+                              child: CameraPreview(cameraController)),
                         ),
-                        if (currentState == 2)
+                        if (currentState == 1)
                           Center(
-                              child: Text(_start.toString(),
+                              child: Text("Não retire sua máscara",
                                   style: GoogleFonts.quicksand(
                                       textStyle: TextStyle(fontSize: 30))))
                       ],

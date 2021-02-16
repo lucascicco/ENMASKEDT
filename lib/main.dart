@@ -9,3 +9,10 @@ Future<void> main() async {
   cameras = await availableCameras();
   runApp(AppWidget());
 }
+
+//Positioned.fill(
+//child: Align(
+//alignment: Alignment.centerRight,
+//child: ....
+//),
+//),
