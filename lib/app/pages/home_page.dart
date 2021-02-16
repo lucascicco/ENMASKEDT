@@ -19,6 +19,7 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
         body: SplashScreen(
       seconds: 5,
+      image: Image.asset('assets/images/mask.png'),
       navigateAfterSeconds: CameraPage.routeName,
       title: Text('ENMASKEDT APP',
           style: TextStyle(
@@ -26,7 +27,7 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: Colors.white,
       loaderColor: Colors.black,
       loadingText: Text(
-        "from Lucas Cicco",
+        "desenvolvido por Lucas Cicco",
         style: TextStyle(color: Colors.black, fontSize: 16.0),
       ),
     ));

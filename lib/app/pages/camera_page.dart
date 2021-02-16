@@ -1,6 +1,10 @@
 import 'package:camera/camera.dart';
+import '../models/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:tflite/tflite.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
+
 import '../../main.dart';
 
 class CameraPage extends StatefulWidget {
@@ -15,7 +19,10 @@ class _CameraPageState extends State<CameraPage> {
   CameraImage imgCamera;
   CameraController cameraController;
   bool isWorking = false;
-  bool masked = false;
+
+  int currentState = 0;
+  Timer _timer;
+  int _start = 3;
 
   initCamera() {
     cameraController = CameraController(cameras[0], ResolutionPreset.medium);
@@ -26,12 +33,30 @@ class _CameraPageState extends State<CameraPage> {
       }
 
       setState(() {
-        cameraController.startImageStream((imageFromStream) => {
-              if (!isWorking)
+        cameraController.startImageStream((imageFromStream) async => {
+              imgCamera = imageFromStream,
+              if (await runModelOnFrame())
                 {
-                  isWorking = true,
-                  imgCamera = imageFromStream,
-                  runModelOnFrame()
+                  if (!_timer.isActive)
+                    {
+                      currentState = 2,
+                      Timer.periodic(
+                        Duration(seconds: 1),
+                        (Timer timer) {
+                          if (_start == 0) {
+                            timer.cancel();
+                            currentState = 3;
+                          } else {
+                            _start--;
+                          }
+                        },
+                      )
+                    }
+                }
+              else
+                {
+                  currentState = 0,
+                  _timer.cancel(),
                 }
             });
       });
@@ -43,7 +68,7 @@ class _CameraPageState extends State<CameraPage> {
         model: "assets/model.tflite", labels: "assets/labels.txt");
   }
 
-  runModelOnFrame() async {
+  Future<bool> runModelOnFrame() async {
     if (imgCamera != null) {
       var recognitions = await Tflite.runModelOnFrame(
           bytesList: imgCamera.planes.map((plane) {
@@ -64,11 +89,34 @@ class _CameraPageState extends State<CameraPage> {
         result = response["label"];
       });
 
-      setState(() {
-        masked = result == "with_mask";
-      });
+      return result == "with_mask";
+    }
 
-      isWorking = false;
+    return false;
+  }
+
+  CameraStatus statusNamed(int state) {
+    switch (state) {
+      case 0:
+        return CameraStatus(
+            status: "Entrada Proibida",
+            color: Colors.red,
+            icon: Icons.error_outline);
+      case 1:
+        return CameraStatus(
+            status: "Verificando...",
+            color: Colors.yellow,
+            icon: Icons.warning);
+      case 3:
+        return CameraStatus(
+            status: "Prossiga",
+            color: Colors.green,
+            icon: Icons.verified_user_sharp);
+      default:
+        return CameraStatus(
+            status: "Entrada Proibida",
+            color: Colors.red,
+            icon: Icons.error_outline);
     }
   }
 
@@ -80,8 +128,15 @@ class _CameraPageState extends State<CameraPage> {
   }
 
   @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
+    final CameraStatus status = statusNamed(currentState);
 
     return Scaffold(
         body: Container(
@@ -93,21 +148,36 @@ class _CameraPageState extends State<CameraPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text("Verificador de máscara"),
+              Image.asset('assets/images/mask.png'),
+              Expanded(
+                child: Text("Verificador de máscara",
+                    style: GoogleFonts.raleway(
+                        textStyle: TextStyle(letterSpacing: 5, fontSize: 15))),
+              ),
             ],
           ),
           Container(
               width: double.infinity,
               height: size.height * 0.7,
-              decoration: BoxDecoration(
-                  border:
-                      Border.all(color: masked ? Colors.green : Colors.red)),
+              decoration:
+                  BoxDecoration(border: Border.all(color: status.color)),
               child: cameraController.value.isInitialized
-                  ? AspectRatio(
-                      aspectRatio: cameraController.value.aspectRatio,
-                      child: CameraPreview(cameraController),
+                  ? Stack(
+                      children: [
+                        AspectRatio(
+                          aspectRatio: cameraController.value.aspectRatio,
+                          child: CameraPreview(cameraController),
+                        ),
+                        if (currentState == 2)
+                          Center(
+                              child: Text(_start.toString(),
+                                  style: GoogleFonts.quicksand(
+                                      textStyle: TextStyle(fontSize: 30))))
+                      ],
                     )
-                  : Center(child: Text('Carregando...'))),
+                  : Center(
+                      child: CircularProgressIndicator(
+                          backgroundColor: Colors.black))),
           Container(
               width: double.infinity,
               height: size.height * 0.1,
@@ -115,15 +185,13 @@ class _CameraPageState extends State<CameraPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    masked ? Icons.check : Icons.error_outline,
-                    color: masked ? Colors.green : Colors.red,
+                    status.icon,
+                    color: status.color,
                   ),
                   SizedBox(width: 10),
                   Text(
-                    masked ? "Prossiga" : "Entrada proibida",
-                    style: TextStyle(
-                        color: masked ? Colors.green : Colors.red,
-                        fontSize: 25.0),
+                    status.status,
+                    style: TextStyle(color: status.color, fontSize: 25.0),
                   )
                 ],
               )),
