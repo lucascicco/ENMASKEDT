@@ -18,13 +18,18 @@ class CameraPage extends StatefulWidget {
 class _CameraPageState extends State<CameraPage> {
   CameraImage imgCamera;
   CameraController cameraController;
+  CameraDescription description;
+  CameraLensDirection cameraLensDirection = CameraLensDirection.front;
   bool isWorking = false;
 
   bool masked = false;
   int currentState = 0;
 
   initCamera() {
-    cameraController = CameraController(cameras[0], ResolutionPreset.medium);
+    description = cameras.firstWhere((CameraDescription cameraDescription) =>
+        cameraDescription.lensDirection == cameraLensDirection);
+
+    cameraController = CameraController(description, ResolutionPreset.medium);
 
     cameraController.initialize().then((value) {
       if (!mounted) {
@@ -45,34 +50,35 @@ class _CameraPageState extends State<CameraPage> {
     });
   }
 
-  loadModel() async {
-    await Tflite.loadModel(
-        model: "assets/model.tflite", labels: "assets/labels.txt");
+  Future<bool> getRunModelOnFrame() async {
+    var recognitions = await Tflite.runModelOnFrame(
+        bytesList: imgCamera.planes.map((plane) {
+          return plane.bytes;
+        }).toList(),
+        imageHeight: imgCamera.height,
+        imageWidth: imgCamera.width,
+        imageMean: 127.5,
+        imageStd: 127.5,
+        rotation: 90,
+        numResults: 1,
+        threshold: 0.1,
+        asynch: true);
+
+    String result = "";
+
+    recognitions.forEach((response) {
+      result = response["label"];
+    });
+
+    return result == "with_mask";
   }
 
   getImageFromFrame() async {
     if (imgCamera != null) {
-      var recognitions = await Tflite.runModelOnFrame(
-          bytesList: imgCamera.planes.map((plane) {
-            return plane.bytes;
-          }).toList(),
-          imageHeight: imgCamera.height,
-          imageWidth: imgCamera.width,
-          imageMean: 127.5,
-          imageStd: 127.5,
-          rotation: 90,
-          numResults: 1,
-          threshold: 0.1,
-          asynch: true);
-
-      String result = "";
-
-      recognitions.forEach((response) {
-        result = response["label"];
-      });
+      var result = await getRunModelOnFrame();
 
       setState(() {
-        masked = result == "with_mask";
+        masked = result;
       });
     }
   }
@@ -85,28 +91,13 @@ class _CameraPageState extends State<CameraPage> {
 
       await Future.delayed(Duration(seconds: 4));
 
-      var maskedTwo = await Tflite.runModelOnFrame(
-          bytesList: imgCamera.planes.map((plane) {
-            return plane.bytes;
-          }).toList(),
-          imageHeight: imgCamera.height,
-          imageWidth: imgCamera.width,
-          imageMean: 127.5,
-          imageStd: 127.5,
-          rotation: 90,
-          numResults: 1,
-          threshold: 0.1,
-          asynch: true);
-
-      String result = "";
-
-      maskedTwo.forEach((response) {
-        result = response["label"];
-      });
+      var maskedTwo = await getRunModelOnFrame();
 
       setState(() {
-        currentState = result == "with_mask" ? 2 : 0;
+        currentState = maskedTwo ? 2 : 3;
       });
+
+      await Future.delayed(Duration(seconds: 2));
     } else {
       setState(() {
         currentState = 0;
@@ -133,12 +124,22 @@ class _CameraPageState extends State<CameraPage> {
             status: "Prossiga",
             color: Colors.green,
             icon: Icons.verified_user_sharp);
+      case 3:
+        return CameraStatus(
+            status: "Máscara retirada",
+            color: Colors.red,
+            icon: Icons.error_outline);
       default:
         return CameraStatus(
             status: "Entrada Proibida",
             color: Colors.red,
             icon: Icons.error_outline);
     }
+  }
+
+  loadModel() async {
+    await Tflite.loadModel(
+        model: "assets/model.tflite", labels: "assets/labels.txt");
   }
 
   @override
@@ -186,17 +187,22 @@ class _CameraPageState extends State<CameraPage> {
           ),
           Container(
               width: double.infinity,
-              decoration:
-                  BoxDecoration(border: Border.all(color: status.color)),
+              decoration: BoxDecoration(
+                  border: cameraController.value.isInitialized
+                      ? Border.all(color: status.color)
+                      : null),
               child: cameraController.value.isInitialized
                   ? Stack(
                       alignment: Alignment.center,
                       children: [
-                        AspectRatio(
-                          aspectRatio: cameraController.value.aspectRatio,
-                          child: Opacity(
-                              opacity: currentState == 1 ? 0.5 : 1.0,
-                              child: CameraPreview(cameraController)),
+                        Container(
+                          height: size.height * 0.6,
+                          child: AspectRatio(
+                            aspectRatio: cameraController.value.aspectRatio,
+                            child: Opacity(
+                                opacity: currentState == 1 ? 0.5 : 1.0,
+                                child: CameraPreview(cameraController)),
+                          ),
                         ),
                         if (currentState == 1)
                           Center(

@@ -27,7 +27,7 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: Colors.white,
       loaderColor: Colors.black,
       loadingText: Text(
-        "desenvolvido por Lucas Cicco",
+        "Desenvolvido por Lucas Cicco",
         style: TextStyle(color: Colors.black, fontSize: 16.0),
       ),
     ));
