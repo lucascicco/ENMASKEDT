@@ -107,8 +107,8 @@ class _CameraPageState extends State<CameraPage> {
     isWorking = false;
   }
 
-  CameraStatus statusNamed(int state) {
-    switch (state) {
+  CameraStatus statusNamed() {
+    switch (currentState) {
       case 0:
         return CameraStatus(
             status: "Entrada Proibida",
@@ -157,7 +157,7 @@ class _CameraPageState extends State<CameraPage> {
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
-    CameraStatus status = statusNamed(currentState);
+    CameraStatus status = statusNamed();
 
     return Scaffold(
         body: Container(
