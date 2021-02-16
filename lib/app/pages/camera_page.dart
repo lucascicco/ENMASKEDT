@@ -20,6 +20,7 @@ class _CameraPageState extends State<CameraPage> {
   CameraController cameraController;
   bool isWorking = false;
 
+  bool masked = false;
   int currentState = 0;
 
   initCamera() {
@@ -36,7 +37,8 @@ class _CameraPageState extends State<CameraPage> {
                 {
                   isWorking = true,
                   imgCamera = imageFromStream,
-                  runModelOnFrame()
+                  getImageFromFrame(),
+                  maskStatus()
                 },
             });
       });
@@ -48,7 +50,7 @@ class _CameraPageState extends State<CameraPage> {
         model: "assets/model.tflite", labels: "assets/labels.txt");
   }
 
-  runModelOnFrame() async {
+  getImageFromFrame() async {
     if (imgCamera != null) {
       var recognitions = await Tflite.runModelOnFrame(
           bytesList: imgCamera.planes.map((plane) {
@@ -69,26 +71,49 @@ class _CameraPageState extends State<CameraPage> {
         result = response["label"];
       });
 
-      if (result == "with_mask") {
-        print("WITH MASK");
-
-        setState(() {
-          currentState = 1;
-        });
-
-        await Future.delayed(Duration(seconds: 3));
-
-        setState(() {
-          currentState = 2;
-        });
-      } else {
-        setState(() {
-          currentState = 0;
-        });
-      }
-
-      isWorking = false;
+      setState(() {
+        masked = result == "with_mask";
+      });
     }
+  }
+
+  maskStatus() async {
+    if (masked) {
+      setState(() {
+        currentState = 1;
+      });
+
+      await Future.delayed(Duration(seconds: 4));
+
+      var maskedTwo = await Tflite.runModelOnFrame(
+          bytesList: imgCamera.planes.map((plane) {
+            return plane.bytes;
+          }).toList(),
+          imageHeight: imgCamera.height,
+          imageWidth: imgCamera.width,
+          imageMean: 127.5,
+          imageStd: 127.5,
+          rotation: 90,
+          numResults: 1,
+          threshold: 0.1,
+          asynch: true);
+
+      String result = "";
+
+      maskedTwo.forEach((response) {
+        result = response["label"];
+      });
+
+      setState(() {
+        currentState = result == "with_mask" ? 2 : 0;
+      });
+    } else {
+      setState(() {
+        currentState = 0;
+      });
+    }
+
+    isWorking = false;
   }
 
   CameraStatus statusNamed(int state) {
