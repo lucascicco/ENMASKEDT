@@ -1,16 +1,22 @@
-# enmaskedt
+# ENMASKEDT <img src="assets/images/mask.png" width=50 height=50>
 
-A new Flutter project. Created by Slidy
+ENMASKEDT APP is based on AI with TensorFlow Lite to detect if the user is wearing mask or not. Then, the most two important libraries on the project are "tflite" and "camera", the first one is connected to the model already "trained" and inserted into the "assets" folder, and the second one is to capture the camera live stream. Both are used together, camera after initialized, starts the "startImageStream" and sends the imageFromStream to a variable in the state that will be used as the base to the "tflite" gets the bytes.
 
-## Getting Started
+## SCREENSHOTS - CAPTURAS DE TELA
 
-This project is a starting point for a Flutter application.
 
-A few resources to get you started if this is your first Flutter project:
+## LIBRARIES - BIBLIOTECAS
+- flutter
+- tflite
+- camera
+- splashscreen
+- google_fonts
 
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
 
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+<hr/>
+
+Developed by,
+
+Desenvolvido por,
+
+lucascicco.
