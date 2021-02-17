@@ -4,6 +4,12 @@ ENMASKEDT APP is based on AI with TensorFlow Lite to detect if the user is weari
 
 ## SCREENSHOTS - CAPTURAS DE TELA
 
+<p align=center> 
+    <span>
+        <img src="assets/screenshots/app.gif" width=300 height=500/>
+    </span>
+</p>
+
 
 ## LIBRARIES - BIBLIOTECAS
 - flutter
